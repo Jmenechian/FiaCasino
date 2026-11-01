@@ -10,7 +10,9 @@ Milestone 1 is accepted: a lobby with Poker, Settings, and Exit, plus a table pr
 
 Milestone 2 is accepted: a full 52-card deck and a Deal button. Entering Poker gives an initial five-card board and two player cards. Deal shuffles a fresh deck and draws seven cards without replacement, so there are no duplicates within a deal. Cards can repeat between deals. The current deal survives Settings and lobby navigation until the app closes.
 
-Card identity remains separate from the 52 SVG faces. There is no betting, hand evaluation, or bot play yet.
+Milestone 3 is implemented and awaiting user review: a BEST HAND label shows the strongest five-card category from the seven displayed cards, including royal flush. It updates on Deal and remains visible when the inspector is hidden. The best hand can use zero, one, or both player cards.
+
+Card identity remains separate from the 52 SVG faces. There is no betting or bot play yet.
 
 ## Run the Windows build
 
@@ -41,9 +43,11 @@ godot --headless --path app --export-release "Windows Desktop" --quit
 
 The local portable editor, if present, is under `local-notes/tools/godot/`; it is not included in a clone. Use the full executable path if Godot is not on PATH.
 
-## Deck checks and artwork
+## Logic checks and artwork
 
 With .NET SDK 10 installed, run `dotnet run --project tests/DeckChecks/DeckChecks.csproj` for standalone deck/deal checks (no Godot required). The application itself still targets `net8.0`. These checks cover deck contents, draws without replacement, exhaustion, shuffle variation, and the presence of all face files.
+
+Run `dotnet run --project tests/PokerChecks/PokerChecks.csproj -c Release` for poker evaluation checks: an exhaustive census of all 2,598,960 five-card hands, royal flush labels, tie-break comparisons, ace-low straights, and seven-card best-five selection. Like DeckChecks, this standalone runner uses .NET 10; the application targets net8.0.
 
 The original SVG faces can be regenerated with Python 3: `python tools/generate_card_faces.py`. See [asset notes](app/Assets/README.md).
 

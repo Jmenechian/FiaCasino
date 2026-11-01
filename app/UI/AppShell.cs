@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using FiaCasino.Cards;
+using FiaCasino.Poker;
 using Godot;
 
 namespace FiaCasino.UI;
@@ -116,7 +118,8 @@ public partial class AppShell : Control
         _readout = Text("CARD INSPECTOR  /  Click any card to see its identity.", 17, "d4c69f", true);
         _readout.Visible = _showReadout;
         page.AddChild(_readout);
-        page.AddChild(Text("Deal shuffles a fresh 52-card deck. No betting or hand evaluation yet.", 14, "80998e", true));
+        var bestHand = HandEvaluator.Evaluate(_board.Concat(_hand).ToArray());
+        page.AddChild(Text($"BEST HAND  /  {bestHand.Label}", 17, "d4c69f", true));
         deal.GrabFocus();
     }
 
