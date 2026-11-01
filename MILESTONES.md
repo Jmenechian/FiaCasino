@@ -8,11 +8,11 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - User review: accepted; user authorized proceeding to mockups.
 
 ## Milestone 1 — Visual shell and workflow proof
-- Status: three visual concepts ready for review; visual direction not selected.
-- Technical check: Godot 4.7.2 .NET builds and runs a local C# probe on Windows. Rendered UI inspected, keyboard button event verified, typography changed, rebuilt, and visually rechecked. Builds have zero warnings/errors.
-- Still unverified: final lobby, mouse input at target display scaling, standalone export, and Linux.
-- Next step: user selects/refines the visual direction.
-- Then: implement an approved button-based desktop lobby with a background and simple navigation; no game mechanics.
-- Verify: build, launch, inspect visually, make a visible revision, and produce a runnable Windows build.
-- Appearance customization is a future consideration, not a requirement for this milestone.
-- Review: show the working result and the tracked/local file boundary; pause before further implementation milestones.
+- Status: complete and user-accepted on 2026-11-01.
+- Implemented: Poker / Settings / Exit lobby; five board cards and two player cards; per-card inspector and log output; session-only inspector visibility setting; Back/Escape navigation.
+- Appearance: user approved proceeding with a simple felt table and readable sample deck rather than selecting a generated concept. Future deck art remains independent of card identity.
+- Technical validation: C# build passed with zero warnings/errors; card textures imported; lobby/table visually inspected; Windows x64 export produced; final export and runtime logs contained no error/warning entries.
+- User validation: after receiving a checklist for all seven card identities, Settings, Back/Escape, resizing, and Exit, the user reported "yeah all feels good" and accepted the result. This is user-reported manual acceptance, not automated UI coverage.
+- Scope limits: fixed sample cards only; no rules, dealing, betting, bots, customization, or Linux verification.
+- Publication: source, card SVGs/import settings, Godot configuration, and docs are tracked. Build outputs, tool downloads, concept art, logs, and working notes stay local.
+- Next milestone: not scoped or authorized yet. Discuss the next small increment before implementation.

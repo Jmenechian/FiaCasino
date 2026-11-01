@@ -25,6 +25,7 @@ Local notes are deliberately ignored by Git. On a fresh clone they will be absen
 - Do not repeatedly ask settled questions. Ask when an unresolved preference materially affects the result or a review decision is required.
 - Explain interesting systems in local notes: how they work, why this approach, limitations, and concrete examples. Bot reasoning is of particular interest when bots are actually implemented.
 - Run checks appropriate to the change. For UI work, inspect the rendered application as well as build output. Report unverified behavior honestly.
+- The user prefers to judge appearance and manually test interactions. Provide a short test checklist and use their reported results; do not take over their desktop for routine acceptance testing. The assistant remains responsible for technical/build checks.
 
 ## Documentation and handoff
 - Keep GitHub lean: source, assets/licenses, setup, README, milestone records, this working agreement, and necessary configuration.
