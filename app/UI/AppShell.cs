@@ -12,12 +12,17 @@ public partial class AppShell : Control
     private string _screen = "";
     private string _settingsReturn = "lobby";
 
-    private static readonly Card[] Board =
+    private Card[]? _board;
+    private Card[] _hand = new Card[2];
+
+    private void Deal()
     {
-        new("Ace", "Spades"), new("King", "Hearts"), new("Queen", "Clubs"),
-        new("Jack", "Diamonds"), new("Ten", "Spades")
-    };
-    private static readonly Card[] Hand = { new("Seven", "Hearts"), new("Two", "Clubs") };
+        var deck = new Deck();
+        _board = new Card[5];
+        for (var i = 0; i < _board.Length; i++) _board[i] = deck.Draw();
+        for (var i = 0; i < _hand.Length; i++) _hand[i] = deck.Draw();
+        ShowTable();
+    }
 
     public override void _Ready()
     {
@@ -75,6 +80,7 @@ public partial class AppShell : Control
 
     private void ShowTable()
     {
+        if (_board == null) { Deal(); return; }
         var page = NewPage("table");
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 16);
@@ -82,6 +88,8 @@ public partial class AppShell : Control
         header.AddChild(ActionButton("Back", ShowLobby, 100));
         header.AddChild(Text("POKER", 22, "f4ecda"));
         header.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var deal = ActionButton("Deal", Deal, 100);
+        header.AddChild(deal);
         header.AddChild(ActionButton("Settings", () => ShowSettings("table"), 130));
 
         var table = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -100,15 +108,16 @@ public partial class AppShell : Control
         table.AddChild(layout);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
         layout.AddChild(Text("THE BOARD", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(Board, "Board"));
+        layout.AddChild(CardRow(_board, "Board"));
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 14) });
         layout.AddChild(Text("YOUR CARDS", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(Hand, "Your hand"));
+        layout.AddChild(CardRow(_hand, "Your hand"));
 
         _readout = Text("CARD INSPECTOR  /  Click any card to see its identity.", 17, "d4c69f", true);
         _readout.Visible = _showReadout;
         page.AddChild(_readout);
-        page.AddChild(Text("Table preview - fixed sample cards, no rules or dealing yet.", 14, "80998e", true));
+        page.AddChild(Text("Deal shuffles a fresh 52-card deck. No betting or hand evaluation yet.", 14, "80998e", true));
+        deal.GrabFocus();
     }
 
     private HBoxContainer CardRow(Card[] cards, string location)

@@ -8,7 +8,9 @@ Built with Godot 4.7.2 .NET and C#, targeting Windows x64. Linux has not been te
 
 Milestone 1 is accepted: a lobby with Poker, Settings, and Exit, plus a table preview with five board cards and two player cards. Click a card to inspect its name and position. Settings can hide the inspector for the current session; clicks still write to the local log.
 
-Cards are fixed samples. There are no rules, dealing, betting, or bots yet. Card identity is separate from its SVG artwork; only the seven sample faces are included.
+Milestone 2 is implemented and awaiting user review: a full 52-card deck and a Deal button. Entering Poker gives an initial five-card board and two player cards. Deal shuffles a fresh deck and draws seven cards without replacement, so there are no duplicates within a deal. Cards can repeat between deals. The current deal survives Settings and lobby navigation until the app closes.
+
+Card identity remains separate from the 52 SVG faces. There is no betting, hand evaluation, or bot play yet.
 
 ## Run the Windows build
 
@@ -34,10 +36,16 @@ For a Windows export, install the matching **.NET export templates** through God
 
 ```powershell
 New-Item -ItemType Directory -Force builds/windows
-godot --headless --path app --export-release "Windows Desktop"
+godot --headless --path app --export-release "Windows Desktop" --quit
 ```
 
 The local portable editor, if present, is under `local-notes/tools/godot/`; it is not included in a clone. Use the full executable path if Godot is not on PATH.
+
+## Deck checks and artwork
+
+With .NET SDK 10 installed, run `dotnet run --project tests/DeckChecks/DeckChecks.csproj` for standalone deck/deal checks (no Godot required). The application itself still targets `net8.0`. These checks cover deck contents, draws without replacement, exhaustion, shuffle variation, and the presence of all face files.
+
+The original SVG faces can be regenerated with Python 3: `python tools/generate_card_faces.py`. See [asset notes](app/Assets/README.md).
 
 ## Working on this repository
 
