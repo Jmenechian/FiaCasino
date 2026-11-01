@@ -1,0 +1,20 @@
+# Private working notes / Obsidian vault
+/local-notes/
+.obsidian/
+
+# Godot and .NET generated files
+.godot/
+**/bin/
+**/obj/
+.vs/
+/builds/
+/exports/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+Thumbs.db
+.DS_Store
