@@ -6,7 +6,7 @@ Windows is the initial target. Godot + C# is the initial technology direction; a
 
 ## Current status
 
-Project setup and collaboration documentation only. There is no runnable application yet, and no engine version has been pinned. Installation and run instructions will be added once validated.
+The lobby is in visual concept review. An isolated local prototype verified basic C# build/run, rendering, keyboard interaction, and visual revision using Godot 4.7.2 .NET on Windows. There is no playable application or standalone export yet. Installation and run instructions will be added with the approved shell.
 
 ## Working on this repository
 
