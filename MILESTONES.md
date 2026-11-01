@@ -18,10 +18,11 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - Next milestone: milestone 2 below.
 
 ## Milestone 2 — Deck and seven-card deal
-- Status: scope approved and implemented on 2026-11-01; awaiting user visual/interaction review.
+- Status: complete and user-accepted on 2026-11-01.
 - Implemented: complete standard 52-card deck (no jokers), matching artwork in the existing style, Fisher-Yates shuffle followed by a queue, and a Deal button drawing five board cards plus two player cards without replacement.
 - Behavior: initial deal on entering Poker; each Deal starts from a fresh shuffled full deck. Cards may repeat between deals. The current deal persists through Settings and lobby navigation during the session. Dealing resets the inspector readout.
 - Preserved: existing appearance, card inspector/logging, inspector visibility setting, and navigation.
 - Excluded: betting, bots, hand evaluation, staged poker rounds, animations, and customization.
 - Technical validation: 1,000 seeded deck/deal checks passed; headless Godot checks passed for 100 deals, all 52 textures, inspector identity/reset, and navigation retaining the deal. C# build passed (NuGet vulnerability-feed warning due to unavailable network); asset import and Windows x64 export passed; exported startup smoke test exited successfully. Final import/export/runtime logs contained no errors or warnings.
-- User review: pending. User handles visual testing; no milestone 2 rendered appearance acceptance claimed.
+- User review: accepted. After receiving the visual/interaction checklist, the user reported "yeah all working perfectly". This records user-reported manual acceptance, not automated visual coverage.
+- Next milestone: not scoped or authorized. Discuss the next small increment before implementation.

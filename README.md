@@ -8,7 +8,7 @@ Built with Godot 4.7.2 .NET and C#, targeting Windows x64. Linux has not been te
 
 Milestone 1 is accepted: a lobby with Poker, Settings, and Exit, plus a table preview with five board cards and two player cards. Click a card to inspect its name and position. Settings can hide the inspector for the current session; clicks still write to the local log.
 
-Milestone 2 is implemented and awaiting user review: a full 52-card deck and a Deal button. Entering Poker gives an initial five-card board and two player cards. Deal shuffles a fresh deck and draws seven cards without replacement, so there are no duplicates within a deal. Cards can repeat between deals. The current deal survives Settings and lobby navigation until the app closes.
+Milestone 2 is accepted: a full 52-card deck and a Deal button. Entering Poker gives an initial five-card board and two player cards. Deal shuffles a fresh deck and draws seven cards without replacement, so there are no duplicates within a deal. Cards can repeat between deals. The current deal survives Settings and lobby navigation until the app closes.
 
 Card identity remains separate from the 52 SVG faces. There is no betting, hand evaluation, or bot play yet.
 
