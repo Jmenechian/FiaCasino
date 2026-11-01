@@ -28,13 +28,13 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - Next milestone: best-hand display, scoped below.
 
 ## Milestone 3 — Best-hand display
-- Status: implemented and technically verified on 2026-11-01; awaiting user review.
+- Status: complete and user-accepted on 2026-11-01.
 - Scope: evaluate the best five-card hand from the seven displayed cards and show a concise hand-category label, including royal flush where applicable. No poker tutorial required.
 - Validate: hand categories, tie-break comparisons, ace-low straights, and best-five selection; preserve Deal, inspector, navigation and existing appearance.
 - Excluded: odds, opponents, betting, staged rounds, bots, and artwork customization.
 - Implemented: independent C# evaluator enumerates five-card subsets, retains comparison ranks and best-five identities, and displays BEST HAND in the existing footer. Royal flush is a display label for an ace-high straight flush. The label updates on Deal and survives inspector visibility/navigation changes.
 - Technical validation: exhaustive category census of all 2,598,960 five-card hands passed, plus targeted category ordering, kickers, suit-neutral ties, ace-low straights, seven-card selection and invalid-input checks. Existing 1,000 seeded deck checks passed. App build passed with zero warnings/errors. Running Godot probe independently checked category labels across 100 deals, all 52 textures, inspector identity/reset/visibility, and navigation retaining cards/label. Rendered table inspected at 960x600 and 1120x700 with inspector shown/hidden; no clipping seen.
 - Build delivery: Godot import and Windows x64 export completed successfully (export exit 0); exported headless startup smoke check exited 0. Final import/scene/export/smoke logs contain no errors or warnings. Release validation covers startup; full interaction checks ran against the development scene.
-- User review: pending. Review the updated Windows build; check label accuracy across deals, inspector independence, navigation, and resizing. Do not start milestone 4 until accepted and authorized.
-- Next action: user manual review and feedback; then record acceptance or fix reported issues.
+- User review: accepted. After receiving the Windows build and manual review checklist, the user reported "yeah looks good". This records user-reported acceptance, not automated release interaction coverage.
+- Next action: await authorization to start milestone 4, staged board reveal (private cards, flop, turn, river with manual advance). Detailed scope and later roadmap remain in local notes.
 - Broader direction: enjoyable offline Hold'em first, one opponent initially, fair bots, Free Play with refills and later tournaments without refills. Mobile deferred; appearance choices optional. Detailed future planning stays in local notes.

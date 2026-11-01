@@ -10,7 +10,7 @@ Milestone 1 is accepted: a lobby with Poker, Settings, and Exit, plus a table pr
 
 Milestone 2 is accepted: a full 52-card deck and a Deal button. Entering Poker gives an initial five-card board and two player cards. Deal shuffles a fresh deck and draws seven cards without replacement, so there are no duplicates within a deal. Cards can repeat between deals. The current deal survives Settings and lobby navigation until the app closes.
 
-Milestone 3 is implemented and awaiting user review: a BEST HAND label shows the strongest five-card category from the seven displayed cards, including royal flush. It updates on Deal and remains visible when the inspector is hidden. The best hand can use zero, one, or both player cards.
+Milestone 3 is accepted: a BEST HAND label shows the strongest five-card category from the seven displayed cards, including royal flush. It updates on Deal and remains visible when the inspector is hidden. The best hand can use zero, one, or both player cards.
 
 Card identity remains separate from the 52 SVG faces. There is no betting or bot play yet.
 
