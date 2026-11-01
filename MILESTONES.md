@@ -25,4 +25,12 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - Excluded: betting, bots, hand evaluation, staged poker rounds, animations, and customization.
 - Technical validation: 1,000 seeded deck/deal checks passed; headless Godot checks passed for 100 deals, all 52 textures, inspector identity/reset, and navigation retaining the deal. C# build passed (NuGet vulnerability-feed warning due to unavailable network); asset import and Windows x64 export passed; exported startup smoke test exited successfully. Final import/export/runtime logs contained no errors or warnings.
 - User review: accepted. After receiving the visual/interaction checklist, the user reported "yeah all working perfectly". This records user-reported manual acceptance, not automated visual coverage.
-- Next milestone: not scoped or authorized. Discuss the next small increment before implementation.
+- Next milestone: best-hand display, scoped below.
+
+## Milestone 3 — Best-hand display
+- Status: scope agreed in principle during planning; not started.
+- Scope: evaluate the best five-card hand from the seven displayed cards and show a concise hand-category label, including royal flush where applicable. No poker tutorial required.
+- Validate: hand categories, tie-break comparisons, ace-low straights, and best-five selection; preserve Deal, inspector, navigation and existing appearance.
+- Excluded: odds, opponents, betting, staged rounds, bots, and artwork customization.
+- Next action: implement when the user starts this milestone; present a short manual review checklist afterward.
+- Broader direction: enjoyable offline Hold'em first, one opponent initially, fair bots, Free Play with refills and later tournaments without refills. Mobile deferred; appearance choices optional. Detailed future planning stays in local notes.
