@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using FiaCasino.Cards;
 using FiaCasino.Poker;
 using Godot;
@@ -14,15 +14,17 @@ public partial class AppShell : Control
     private string _screen = "";
     private string _settingsReturn = "lobby";
 
-    private Card[]? _board;
-    private Card[] _hand = new Card[2];
+    private PokerHand? _pokerHand;
 
     private void Deal()
     {
-        var deck = new Deck();
-        _board = new Card[5];
-        for (var i = 0; i < _board.Length; i++) _board[i] = deck.Draw();
-        for (var i = 0; i < _hand.Length; i++) _hand[i] = deck.Draw();
+        _pokerHand = new PokerHand();
+        ShowTable();
+    }
+
+    private void Advance()
+    {
+        _pokerHand!.Advance();
         ShowTable();
     }
 
@@ -82,7 +84,7 @@ public partial class AppShell : Control
 
     private void ShowTable()
     {
-        if (_board == null) { Deal(); return; }
+        if (_pokerHand == null) { Deal(); return; }
         var page = NewPage("table");
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 16);
@@ -90,6 +92,15 @@ public partial class AppShell : Control
         header.AddChild(ActionButton("Back", ShowLobby, 100));
         header.AddChild(Text("POKER", 22, "f4ecda"));
         header.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var advance = ActionButton(_pokerHand.Stage switch
+        {
+            HandStage.PreFlop => "Reveal flop",
+            HandStage.Flop => "Reveal turn",
+            HandStage.Turn => "Reveal river",
+            _ => "River revealed"
+        }, Advance, 180);
+        advance.Disabled = !_pokerHand.CanAdvance;
+        header.AddChild(advance);
         var deal = ActionButton("Deal", Deal, 100);
         header.AddChild(deal);
         header.AddChild(ActionButton("Settings", () => ShowSettings("table"), 130));
@@ -109,25 +120,26 @@ public partial class AppShell : Control
         layout.AddThemeConstantOverride("separation", 14);
         table.AddChild(layout);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        layout.AddChild(Text("THE BOARD", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(_board, "Board"));
+        var stage = _pokerHand.Stage == HandStage.PreFlop ? "PRE-FLOP" : _pokerHand.Stage.ToString().ToUpperInvariant();
+        layout.AddChild(Text($"THE BOARD  /  {stage}", 14, "b0c8b5", true));
+        layout.AddChild(CardRow(_pokerHand.Board, "Board", 5));
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 14) });
         layout.AddChild(Text("YOUR CARDS", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(_hand, "Your hand"));
+        layout.AddChild(CardRow(_pokerHand.HoleCards, "Your hand"));
 
         _readout = Text("CARD INSPECTOR  /  Click any card to see its identity.", 17, "d4c69f", true);
         _readout.Visible = _showReadout;
         page.AddChild(_readout);
-        var bestHand = HandEvaluator.Evaluate(_board.Concat(_hand).ToArray());
-        page.AddChild(Text($"BEST HAND  /  {bestHand.Label}", 17, "d4c69f", true));
-        deal.GrabFocus();
+        var bestHand = _pokerHand.BestHand;
+        page.AddChild(Text($"BEST HAND  /  {bestHand?.Label ?? "Available from the flop"}", 17, "d4c69f", true));
+        if (_pokerHand.CanAdvance) advance.GrabFocus(); else deal.GrabFocus();
     }
 
-    private HBoxContainer CardRow(Card[] cards, string location)
+    private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, int slots = 0)
     {
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 16);
-        for (var i = 0; i < cards.Length; i++)
+        for (var i = 0; i < cards.Count; i++)
         {
             var position = i + 1;
             row.AddChild(new CardView(cards[i], card =>
@@ -136,6 +148,19 @@ public partial class AppShell : Control
                 if (_readout != null) _readout.Text = message;
                 GD.Print($"[CardInspector] {message}");
             }));
+        }
+        for (var i = cards.Count; i < slots; i++)
+        {
+            var empty = new Panel { CustomMinimumSize = new Vector2(116, 164),
+                MouseFilter = MouseFilterEnum.Ignore };
+            empty.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                BgColor = new Color("174b3c"), BorderColor = new Color("547560"),
+                BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+                CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9,
+                CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9
+            });
+            row.AddChild(empty);
         }
         return row;
     }
