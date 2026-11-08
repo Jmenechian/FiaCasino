@@ -9,7 +9,12 @@ namespace FiaCasino.UI;
 
 public partial class AppShell : Control
 {
+    private static readonly Vector2 BoardCardSize = new(92, 128);
+    private static readonly Vector2 OpponentCardSize = new(74, 104);
     private Control _page = null!;
+    private TextureRect _loungeBackground = null!;
+    private Theme _loungeTheme = null!;
+    private readonly SystemFont _loungeTitle = new() { FontNames = new[] { "Georgia", "Times New Roman" } };
     private Label? _readout;
     private bool _showReadout = true;
     private string _screen = "";
@@ -33,6 +38,21 @@ public partial class AppShell : Control
     {
         GetWindow().MinSize = new Vector2I(960, 600);
         Theme = BuildTheme();
+        _loungeTheme = BuildTheme(lounge: true);
+        _loungeBackground = new TextureRect
+        {
+            Texture = new GradientTexture2D
+            {
+                Gradient = new Gradient { Colors = new[] { new Color("382b20"), new Color("14120f") } },
+                Fill = GradientTexture2D.FillEnum.Radial,
+                FillFrom = new Vector2(0.5f, 0), FillTo = new Vector2(0.5f, 0.85f),
+                Width = 1024, Height = 640
+            },
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        AddChild(_loungeBackground);
+        _loungeBackground.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ShowLobby();
     }
 
@@ -50,6 +70,7 @@ public partial class AppShell : Control
     {
         if (IsInstanceValid(_page)) { RemoveChild(_page); _page.QueueFree(); }
         _screen = screen;
+        _loungeBackground.Visible = screen == "table";
         _readout = null;
         var margin = new MarginContainer();
         _page = margin;
@@ -88,54 +109,76 @@ public partial class AppShell : Control
         if (_session == null) { RestartFreePlay(); return; }
         var hand = _session.Hand;
         var page = NewPage("table");
-        page.AddThemeConstantOverride("separation", 10);
+        page.Theme = _loungeTheme;
+        page.AddThemeConstantOverride("separation", 12);
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 16);
         page.AddChild(header);
         header.AddChild(ActionButton("Back", ShowLobby, 100));
-        header.AddChild(Text($"FREE PLAY  /  HAND {_session.HandNumber}  /  BLINDS 1–2", 18, "f4ecda"));
+        var branding = new VBoxContainer();
+        header.AddChild(branding);
+        var title = Text("FiaCasino", 31, "f7ead6");
+        title.AddThemeFontOverride("font", _loungeTitle);
+        branding.AddChild(title);
+        branding.AddChild(Text("FREE PLAY  /  NO-LIMIT HOLD’EM", 13, "d0b999"));
         header.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        header.AddChild(Text($"HAND {_session.HandNumber}  /  BLINDS 1–2", 15, "d0b999"));
         header.AddChild(ActionButton("Settings", () => ShowSettings("table"), 130));
 
-        var table = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        table.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color("174b3c"), BorderColor = new Color("547560"),
-            BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
-            CornerRadiusTopLeft = 110, CornerRadiusTopRight = 110,
-            CornerRadiusBottomLeft = 110, CornerRadiusBottomRight = 110,
-            ContentMarginTop = 20, ContentMarginBottom = 20,
-            ContentMarginLeft = 32, ContentMarginRight = 32
-        });
-        page.AddChild(table);
+        var rail = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        var railStyle = LoungeFrame("392a20", "b78b52", 2, 140, 9);
+        railStyle.ShadowColor = new Color(0, 0, 0, 0.45f);
+        railStyle.ShadowSize = 12;
+        railStyle.ShadowOffset = new Vector2(0, 6);
+        rail.AddThemeStyleboxOverride("panel", railStyle);
+        page.AddChild(rail);
+        var felt = new PanelContainer();
+        felt.AddThemeStyleboxOverride("panel", LoungeFrame("173e32", "876944", 1, 131, 14));
+        rail.AddChild(felt);
         var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 8);
-        table.AddChild(layout);
+        layout.AddThemeConstantOverride("separation", 5);
+        felt.AddChild(layout);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        var stage = hand.Stage == HandStage.PreFlop ? "PRE-FLOP" : hand.Stage.ToString().ToUpperInvariant();
-        var pot = hand.Outcome == null ? $"POT {hand.Pot}" : $"POT PAID {hand.AwardedPot}";
-        layout.AddChild(Text($"{stage}  /  {pot}", 17, "f4ecda", true));
-        layout.AddChild(CardRow(hand.Board, "Board", 5));
-        layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        var seats = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        seats.AddThemeConstantOverride("separation", 56);
-        layout.AddChild(seats);
-        var player = new VBoxContainer();
-        seats.AddChild(player);
-        player.AddChild(Text(SeatLabel(hand, Seat.Player, "YOU"), 15, "b0c8b5", true));
-        player.AddChild(CardRow(hand.HoleCards, "Your hand"));
-        var opponent = new VBoxContainer();
-        seats.AddChild(opponent);
-        opponent.AddChild(Text(SeatLabel(hand, Seat.Opponent, "OPPONENT"), 15, "b0c8b5", true));
-        opponent.AddChild(CardRow(hand.RevealedOpponentCards, "Opponent", 2, faceDown: true));
+        layout.AddChild(Text(SeatLabel(hand, Seat.Opponent, "OPPONENT"), 15, "efe1c7", true));
+        layout.AddChild(CardRow(hand.RevealedOpponentCards, "Opponent", OpponentCardSize, 2, faceDown: true));
 
-        _readout = Text("CARD INSPECTOR  /  Click a visible card", 15, "d4c69f", true);
+        var stage = hand.Stage == HandStage.PreFlop ? "PRE-FLOP" : hand.Stage.ToString().ToUpperInvariant();
+        var potLabel = hand.Outcome == null ? "POT" : "POT PAID";
+        var pot = hand.Outcome == null ? hand.Pot : hand.AwardedPot;
+        var potBadge = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        var potStyle = LoungeFrame("102c23", "6e7455", 1, 18, 6);
+        potStyle.ContentMarginLeft = 14;
+        potStyle.ContentMarginRight = 14;
+        potBadge.AddThemeStyleboxOverride("panel", potStyle);
+        layout.AddChild(potBadge);
+        var potRow = new HBoxContainer();
+        potRow.AddThemeConstantOverride("separation", 12);
+        potBadge.AddChild(potRow);
+        potRow.AddChild(Text($"{stage}  /  {potLabel}", 14, "d0b999"));
+        potRow.AddChild(Text($"{pot}", 23, "ffe3a9"));
+        layout.AddChild(CardRow(hand.Board, "Board", BoardCardSize, 5));
+        layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        layout.AddChild(CardRow(hand.HoleCards, "Your hand", BoardCardSize));
+        layout.AddChild(Text(SeatLabel(hand, Seat.Player, "YOU"), 15, "efe1c7", true));
+        layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+
+        var dock = new PanelContainer();
+        dock.AddThemeStyleboxOverride("panel", LoungeFrame("251e18", "614933", 1, 12, 12));
+        page.AddChild(dock);
+        var footer = new VBoxContainer();
+        dock.AddChild(footer);
+        _readout = Text("CARD INSPECTOR  /  Click a visible card", 14, "c4af93");
         _readout.Visible = _showReadout;
-        page.AddChild(_readout);
+        footer.AddChild(_readout);
+        var dockRow = new HBoxContainer();
+        dockRow.AddThemeConstantOverride("separation", 16);
+        footer.AddChild(dockRow);
+        var status = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        dockRow.AddChild(status);
         var summary = $"BEST HAND  /  {hand.BestHand?.Label ?? "Available from the flop"}";
         if (hand.OpponentBestHand is { } opponentBest)
             summary += $"     OPPONENT  /  {opponentBest.Label}";
-        page.AddChild(Text(summary, 17, "d4c69f", true));
+        status.AddChild(Text(summary, 14, "d0b999"));
 
         if (hand.Outcome is { } outcome)
         {
@@ -148,9 +191,10 @@ public partial class AppShell : Control
             if (hand.Folded is { } folded) result += folded == Seat.Player ? "  /  You folded" : "  /  Opponent folded";
             if (hand.ReturnedChips > 0)
                 result += $"  /  {hand.ReturnedChips} returned to {(hand.ReturnedTo == Seat.Player ? "you" : "opponent")}";
-            page.AddChild(Text(result, 19, "f4ecda", true));
-            var controls = ActionRow(page);
+            status.AddChild(Text(result, 19, "f4ecda"));
+            var controls = ActionRow(dockRow);
             var next = ActionButton("Next hand", () => { _session.NextHand(); ShowTable(); });
+            next.ThemeTypeVariation = "LoungePrimary";
             controls.AddChild(next);
             controls.AddChild(ActionButton("Restart Free Play", RestartFreePlay));
             next.GrabFocus();
@@ -159,34 +203,38 @@ public partial class AppShell : Control
 
         var activity = string.Join("  /  ", new[] { _session.RefillNotice, _session.OpponentActivity, "Your turn" }
             .Where(message => message.Length > 0));
-        page.AddChild(Text(activity, 17, "f4ecda", true));
+        var activityLabel = Text(activity, 17, "f4ecda");
+        activityLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        status.AddChild(activityLabel);
         var legal = hand.Legal;
-        var actions = ActionRow(page);
+        var actions = ActionRow(dockRow);
         if (legal.Call > 0) actions.AddChild(ActionButton("Fold", () => Act(PokerAction.Fold)));
         var callLabel = legal.Call == hand.Stack(Seat.Player) ? $"Call all-in {legal.Call}" : $"Call {legal.Call}";
-        actions.AddChild(legal.Call > 0
+        var passive = legal.Call > 0
             ? ActionButton(callLabel, () => Act(PokerAction.Call))
-            : ActionButton("Check", () => Act(PokerAction.Check)));
+            : ActionButton("Check", () => Act(PokerAction.Check));
+        passive.ThemeTypeVariation = "LoungePrimary";
+        actions.AddChild(passive);
         if (legal.CanWager)
         {
             var amount = new SpinBox
             {
                 MinValue = legal.MinWagerTo, MaxValue = legal.MaxWagerTo, Step = 1, Value = legal.MinWagerTo,
-                CustomMinimumSize = new Vector2(124, 0),
+                CustomMinimumSize = new Vector2(104, 0),
                 TooltipText = "Total chips to commit on this street"
             };
+            actions.AddChild(amount);
             actions.AddChild(ActionButton(hand.Committed(Seat.Player) + hand.Committed(Seat.Opponent) == 0
                 ? "Bet to" : "Raise to", () => { amount.Apply(); Act(PokerAction.Wager, (int)amount.Value); }));
-            actions.AddChild(amount);
             actions.AddChild(ActionButton("All-in", () => Act(PokerAction.Wager, legal.MaxWagerTo)));
         }
     }
 
-    private static HBoxContainer ActionRow(VBoxContainer page)
+    private static HBoxContainer ActionRow(HBoxContainer dock)
     {
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);
-        page.AddChild(row);
+        dock.AddChild(row);
         return row;
     }
 
@@ -196,14 +244,14 @@ public partial class AppShell : Control
         return $"{name}{dealer}  /  STACK {hand.Stack(seat)}  /  IN {hand.Committed(seat)}";
     }
 
-    private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, int slots = 0, bool faceDown = false)
+    private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, Vector2 size, int slots = 0, bool faceDown = false)
     {
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 16);
         for (var i = 0; i < cards.Count; i++)
         {
             var position = i + 1;
-            row.AddChild(new CardView(cards[i], card =>
+            row.AddChild(new CardView(cards[i], size, card =>
             {
                 var message = $"{location} {position}  /  {card.DisplayName}  /  {card.Id}";
                 if (_readout != null) _readout.Text = message;
@@ -212,19 +260,21 @@ public partial class AppShell : Control
         }
         for (var i = cards.Count; i < slots; i++)
         {
-            var empty = new Panel { CustomMinimumSize = new Vector2(116, 164),
+            var empty = new Panel { CustomMinimumSize = size,
                 MouseFilter = MouseFilterEnum.Ignore };
-            empty.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-            {
-                BgColor = new Color(faceDown ? "1c352d" : "174b3c"),
-                BorderColor = new Color(faceDown ? "cdb781" : "547560"),
-                BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
-                CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9,
-                CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9
-            });
+            empty.AddThemeStyleboxOverride("panel", LoungeFrame(
+                faceDown ? "1e2721" : "14362c", faceDown ? "c5a16c" : "55725b", 1, 8, 0));
             if (faceDown)
             {
-                var marker = Text("◆", 32, "cdb781", true);
+                var inset = new Panel { MouseFilter = MouseFilterEnum.Ignore };
+                inset.AddThemeStyleboxOverride("panel", LoungeFrame("293b30", "6e7358", 1, 5, 0));
+                empty.AddChild(inset);
+                inset.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                inset.OffsetLeft = 5;
+                inset.OffsetTop = 5;
+                inset.OffsetRight = -5;
+                inset.OffsetBottom = -5;
+                var marker = Text("◆", 25, "d6ad74", true);
                 marker.VerticalAlignment = VerticalAlignment.Center;
                 empty.AddChild(marker);
                 marker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -275,19 +325,47 @@ public partial class AppShell : Control
         return button;
     }
 
-    private static Theme BuildTheme()
+    private static StyleBoxFlat LoungeFrame(string fill, string border, int width, int radius, int padding) => new()
     {
-        var theme = new Theme { DefaultFontSize = 20 };
-        foreach (var (state, color) in new[] { ("normal", "1c352d"), ("hover", "2d5141"), ("pressed", "395f4c") })
+        BgColor = new Color(fill), BorderColor = new Color(border),
+        BorderWidthBottom = width, BorderWidthTop = width, BorderWidthLeft = width, BorderWidthRight = width,
+        CornerRadiusBottomLeft = radius, CornerRadiusBottomRight = radius,
+        CornerRadiusTopLeft = radius, CornerRadiusTopRight = radius,
+        ContentMarginLeft = padding, ContentMarginRight = padding,
+        ContentMarginTop = padding, ContentMarginBottom = padding
+    };
+
+    private static Theme BuildTheme(bool lounge = false)
+    {
+        var theme = new Theme { DefaultFontSize = lounge ? 18 : 20 };
+        var palette = lounge
+            ? new[] { ("normal", "33271e"), ("hover", "49372a"), ("pressed", "5a4432") }
+            : new[] { ("normal", "1c352d"), ("hover", "2d5141"), ("pressed", "395f4c") };
+        foreach (var (state, color) in palette)
             theme.SetStylebox(state, "Button", new StyleBoxFlat
             {
-                BgColor = new Color(color), BorderColor = new Color("59725b"),
+                BgColor = new Color(color), BorderColor = new Color(lounge ? "99764e" : "59725b"),
                 BorderWidthBottom = 1, BorderWidthTop = 1, BorderWidthLeft = 1, BorderWidthRight = 1,
                 CornerRadiusTopLeft = 8, CornerRadiusTopRight = 8, CornerRadiusBottomLeft = 8, CornerRadiusBottomRight = 8,
                 ContentMarginLeft = 18, ContentMarginRight = 18
             });
         theme.SetColor("font_color", "Button", new Color("f4ecda"));
         theme.SetColor("font_hover_color", "Button", new Color("fff8e8"));
+        if (lounge)
+        {
+            theme.SetTypeVariation("LoungePrimary", "Button");
+            foreach (var (state, color) in new[] { ("normal", "e6c087"), ("hover", "f6d7a4"), ("pressed", "c9a16b") })
+            {
+                var style = LoungeFrame(color, "f4d5a4", 1, 8, 18);
+                style.ContentMarginTop = 5;
+                style.ContentMarginBottom = 5;
+                theme.SetStylebox(state, "LoungePrimary", style);
+            }
+            foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
+                theme.SetColor(state, "LoungePrimary", new Color("261b11"));
+            theme.SetStylebox("normal", "LineEdit", LoungeFrame("1d1712", "99764e", 1, 8, 8));
+            theme.SetColor("font_color", "LineEdit", new Color("f4ecda"));
+        }
         return theme;
     }
 }

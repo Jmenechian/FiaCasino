@@ -70,4 +70,10 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 
 - Implemented: a simple opponent that acts on its own cards and public information, repeated hands with 200-chip starting stacks, automatic refills for busted seats between hands, and session restart after a hand.
 - Validation for Milestones 6–8: C# build succeeded with a NuGet vulnerability-feed warning. Deck and poker checks passed, including 1,000 seeded Free Play hands. Headless and rendered Godot probes passed for typed wagers, folds, automatic board progression and showdown, navigation, alternating dealer and restart. Inspected pre-flop, flop and showdown at 960×600. The Windows export and exported startup check passed. Interaction checks ran against the development scene.
-- Review: accepted on 2026-11-08. The user expressed interest in a more polished poker table. A visual direction is under review before implementation.
+- Review: accepted on 2026-11-08. The user requested a more polished poker table.
+
+## Poker table polish — Classic lounge
+
+- The user selected the Classic lounge mockup on 2026-11-08. The refreshed poker table uses green felt, a brass-edged rail, opposing seats, a central pot display and a bottom action panel.
+- Status: implemented. Awaiting manual review of the Windows build.
+- Validation: C# build, headless and rendered Godot interaction checks, Windows export, and exported startup smoke check passed. Inspected the rendered table at 960×600 and 1120×700. The build reported a NuGet vulnerability-feed warning.

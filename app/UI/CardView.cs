@@ -8,12 +8,12 @@ public partial class CardView : Button
 {
     public Card Identity { get; }
 
-    public CardView(Card identity, Action<Card> onSelected)
+    public CardView(Card identity, Vector2 size, Action<Card> onSelected)
     {
         Identity = identity;
         Name = identity.Id;
         TooltipText = identity.DisplayName;
-        CustomMinimumSize = new Vector2(116, 164);
+        CustomMinimumSize = size;
         MouseDefaultCursorShape = CursorShape.PointingHand;
         AddThemeStyleboxOverride("normal", Frame("e9e3d5", 1));
         AddThemeStyleboxOverride("hover", Frame("d0b77e", 3));
