@@ -6,13 +6,13 @@ Built with Godot 4.7.2 .NET and C#, targeting Windows x64. Linux has not been te
 
 ## Current status
 
-Milestones 1–4 are accepted: lobby and navigation, session-only inspector settings, a shuffled 52-card deck, best-five hand evaluation, and staged board reveal.
+Milestones 1–5 are accepted. Milestones 6–8 add heads-up no-limit Hold’em, hand settlement, and a Free Play bot.
 
-Enter Poker with two private cards, two face-down opponent cards, and an empty board. Use **Reveal flop**, **Reveal turn**, and **Reveal river** to reveal 3, then 1, then 1 community cards. The BEST HAND label uses only your cards and the visible board. Pre-flop it reads “Available from the flop.”
+Choose **Poker** to start Free Play. Both seats begin with 200 chips and post 1/2 blinds. The dealer marker alternates each hand. The table shows the pot, stacks, current street contributions, and the bot’s latest actions.
 
-**Showdown** becomes available after the river. It reveals the opponent’s cards and displays their best hand alongside yours and the result (win, loss, or tie). The hand, stage, and result survive Settings and lobby navigation until the app closes. Empty board positions and face-down cards are noninteractive. **Deal** starts a fresh hand at any stage.
+Choose from the actions offered on your turn. **Bet to** and **Raise to** use the total chips you want committed on the current street. Betting advances the board automatically. A fold ends the hand with the opponent’s cards still hidden. Once a called all-in closes the action, the remaining board runs out and the pot is paid at showdown. Equal hands split the pot.
 
-Card identity remains separate from the 52 SVG faces. The opponent participates in the deal and showdown. Betting and bot decisions are future work.
+**Next hand** keeps both stacks and refills a busted seat to 200 chips. **Restart Free Play** resets the session between hands. Your session survives Settings and lobby navigation until the app closes.
 
 ## Run the Windows build
 
@@ -47,7 +47,7 @@ The local portable editor, if present, is under `local-notes/tools/godot/`; it i
 
 With .NET SDK 10 installed, run `dotnet run --project tests/DeckChecks/DeckChecks.csproj` for standalone deck/deal checks (no Godot required). The application itself still targets `net8.0`. These checks cover deck contents, draws without replacement, exhaustion, shuffle variation, and the presence of all face files.
 
-Run `dotnet run --project tests/PokerChecks/PokerChecks.csproj -c Release` for an exhaustive census of all 2,598,960 five-card hands, evaluator comparisons, and 1,000 seeded deals covering staged reveals, concealed opponent cards, unique cards, and all three showdown outcomes. Like DeckChecks, this standalone runner uses .NET 10. The application targets net8.0.
+Run `dotnet run --project tests/PokerChecks/PokerChecks.csproj -c Release` for the exhaustive five-card evaluator census, staged deal checks, targeted betting and settlement cases, and 1,000 seeded Free Play hands covering chip conservation, split pots, refills, and bot action legality. Like DeckChecks, this standalone runner uses .NET 10. The application targets net8.0.
 
 The original SVG faces can be regenerated with Python 3: `python tools/generate_card_faces.py`. See [asset notes](app/Assets/README.md).
 

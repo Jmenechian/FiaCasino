@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FiaCasino.Cards;
 using FiaCasino.Poker;
 using Godot;
@@ -14,18 +15,17 @@ public partial class AppShell : Control
     private string _screen = "";
     private string _settingsReturn = "lobby";
 
-    private PokerHand? _pokerHand;
+    private FreePlaySession? _session;
 
-    private void Deal()
+    private void RestartFreePlay()
     {
-        _pokerHand = new PokerHand();
+        _session = new FreePlaySession();
         ShowTable();
     }
 
-    private void Advance()
+    private void Act(PokerAction action, int wagerTo = 0)
     {
-        if (_pokerHand!.CanShowdown) _pokerHand.Showdown();
-        else _pokerHand.Advance();
+        _session!.Act(action, wagerTo);
         ShowTable();
     }
 
@@ -85,25 +85,16 @@ public partial class AppShell : Control
 
     private void ShowTable()
     {
-        if (_pokerHand == null) { Deal(); return; }
+        if (_session == null) { RestartFreePlay(); return; }
+        var hand = _session.Hand;
         var page = NewPage("table");
+        page.AddThemeConstantOverride("separation", 10);
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 16);
         page.AddChild(header);
         header.AddChild(ActionButton("Back", ShowLobby, 100));
-        header.AddChild(Text("POKER", 22, "f4ecda"));
+        header.AddChild(Text($"FREE PLAY  /  HAND {_session.HandNumber}  /  BLINDS 1–2", 18, "f4ecda"));
         header.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var advance = ActionButton(_pokerHand.Stage switch
-        {
-            HandStage.PreFlop => "Reveal flop",
-            HandStage.Flop => "Reveal turn",
-            HandStage.Turn => "Reveal river",
-            _ => _pokerHand.CanShowdown ? "Showdown" : "Showdown complete"
-        }, Advance, 180);
-        advance.Disabled = !_pokerHand.CanAdvance && !_pokerHand.CanShowdown;
-        header.AddChild(advance);
-        var deal = ActionButton("Deal", Deal, 100);
-        header.AddChild(deal);
         header.AddChild(ActionButton("Settings", () => ShowSettings("table"), 130));
 
         var table = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -113,47 +104,96 @@ public partial class AppShell : Control
             BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
             CornerRadiusTopLeft = 110, CornerRadiusTopRight = 110,
             CornerRadiusBottomLeft = 110, CornerRadiusBottomRight = 110,
-            ContentMarginTop = 28, ContentMarginBottom = 28,
+            ContentMarginTop = 20, ContentMarginBottom = 20,
             ContentMarginLeft = 32, ContentMarginRight = 32
         });
         page.AddChild(table);
         var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 14);
+        layout.AddThemeConstantOverride("separation", 8);
         table.AddChild(layout);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        var stage = _pokerHand.Stage == HandStage.PreFlop ? "PRE-FLOP" : _pokerHand.Stage.ToString().ToUpperInvariant();
-        layout.AddChild(Text($"THE BOARD  /  {stage}", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(_pokerHand.Board, "Board", 5));
-        layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 14) });
+        var stage = hand.Stage == HandStage.PreFlop ? "PRE-FLOP" : hand.Stage.ToString().ToUpperInvariant();
+        var pot = hand.Outcome == null ? $"POT {hand.Pot}" : $"POT PAID {hand.AwardedPot}";
+        layout.AddChild(Text($"{stage}  /  {pot}", 17, "f4ecda", true));
+        layout.AddChild(CardRow(hand.Board, "Board", 5));
+        layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
         var seats = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         seats.AddThemeConstantOverride("separation", 56);
         layout.AddChild(seats);
         var player = new VBoxContainer();
         seats.AddChild(player);
-        player.AddChild(Text("YOUR CARDS", 14, "b0c8b5", true));
-        player.AddChild(CardRow(_pokerHand.HoleCards, "Your hand"));
+        player.AddChild(Text(SeatLabel(hand, Seat.Player, "YOU"), 15, "b0c8b5", true));
+        player.AddChild(CardRow(hand.HoleCards, "Your hand"));
         var opponent = new VBoxContainer();
         seats.AddChild(opponent);
-        opponent.AddChild(Text("OPPONENT", 14, "b0c8b5", true));
-        opponent.AddChild(CardRow(_pokerHand.RevealedOpponentCards, "Opponent", 2, faceDown: true));
+        opponent.AddChild(Text(SeatLabel(hand, Seat.Opponent, "OPPONENT"), 15, "b0c8b5", true));
+        opponent.AddChild(CardRow(hand.RevealedOpponentCards, "Opponent", 2, faceDown: true));
 
-        _readout = Text("CARD INSPECTOR  /  Click any card to see its identity.", 17, "d4c69f", true);
+        _readout = Text("CARD INSPECTOR  /  Click a visible card", 15, "d4c69f", true);
         _readout.Visible = _showReadout;
         page.AddChild(_readout);
-        var bestHand = _pokerHand.BestHand;
-        var summary = $"BEST HAND  /  {bestHand?.Label ?? "Available from the flop"}";
-        if (_pokerHand.Outcome is { } outcome)
+        var summary = $"BEST HAND  /  {hand.BestHand?.Label ?? "Available from the flop"}";
+        if (hand.OpponentBestHand is { } opponentBest)
+            summary += $"     OPPONENT  /  {opponentBest.Label}";
+        page.AddChild(Text(summary, 17, "d4c69f", true));
+
+        if (hand.Outcome is { } outcome)
         {
             var result = outcome switch
             {
-                ShowdownOutcome.PlayerWins => "You win",
-                ShowdownOutcome.OpponentWins => "Opponent wins",
-                _ => "Tie"
+                ShowdownOutcome.PlayerWins => $"You win {hand.AwardedPot}",
+                ShowdownOutcome.OpponentWins => $"Opponent wins {hand.AwardedPot}",
+                _ => $"Split pot  /  {hand.AwardedPot / 2} each"
             };
-            summary += $"     OPPONENT  /  {_pokerHand.OpponentBestHand!.Label}     RESULT  /  {result}";
+            if (hand.Folded is { } folded) result += folded == Seat.Player ? "  /  You folded" : "  /  Opponent folded";
+            if (hand.ReturnedChips > 0)
+                result += $"  /  {hand.ReturnedChips} returned to {(hand.ReturnedTo == Seat.Player ? "you" : "opponent")}";
+            page.AddChild(Text(result, 19, "f4ecda", true));
+            var controls = ActionRow(page);
+            var next = ActionButton("Next hand", () => { _session.NextHand(); ShowTable(); });
+            controls.AddChild(next);
+            controls.AddChild(ActionButton("Restart Free Play", RestartFreePlay));
+            next.GrabFocus();
+            return;
         }
-        page.AddChild(Text(summary, 17, "d4c69f", true));
-        if (advance.Disabled) deal.GrabFocus(); else advance.GrabFocus();
+
+        var activity = string.Join("  /  ", new[] { _session.RefillNotice, _session.OpponentActivity, "Your turn" }
+            .Where(message => message.Length > 0));
+        page.AddChild(Text(activity, 17, "f4ecda", true));
+        var legal = hand.Legal;
+        var actions = ActionRow(page);
+        if (legal.Call > 0) actions.AddChild(ActionButton("Fold", () => Act(PokerAction.Fold)));
+        var callLabel = legal.Call == hand.Stack(Seat.Player) ? $"Call all-in {legal.Call}" : $"Call {legal.Call}";
+        actions.AddChild(legal.Call > 0
+            ? ActionButton(callLabel, () => Act(PokerAction.Call))
+            : ActionButton("Check", () => Act(PokerAction.Check)));
+        if (legal.CanWager)
+        {
+            var amount = new SpinBox
+            {
+                MinValue = legal.MinWagerTo, MaxValue = legal.MaxWagerTo, Step = 1, Value = legal.MinWagerTo,
+                CustomMinimumSize = new Vector2(124, 0),
+                TooltipText = "Total chips to commit on this street"
+            };
+            actions.AddChild(ActionButton(hand.Committed(Seat.Player) + hand.Committed(Seat.Opponent) == 0
+                ? "Bet to" : "Raise to", () => { amount.Apply(); Act(PokerAction.Wager, (int)amount.Value); }));
+            actions.AddChild(amount);
+            actions.AddChild(ActionButton("All-in", () => Act(PokerAction.Wager, legal.MaxWagerTo)));
+        }
+    }
+
+    private static HBoxContainer ActionRow(VBoxContainer page)
+    {
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 12);
+        page.AddChild(row);
+        return row;
+    }
+
+    private static string SeatLabel(BettingHand hand, Seat seat, string name)
+    {
+        var dealer = seat == hand.Dealer ? " (D)" : "";
+        return $"{name}{dealer}  /  STACK {hand.Stack(seat)}  /  IN {hand.Committed(seat)}";
     }
 
     private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, int slots = 0, bool faceDown = false)

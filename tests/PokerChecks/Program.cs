@@ -172,3 +172,117 @@ for (var seed = 0; seed < 1000; seed++)
 }
 Check(outcomes.Count == 3, "Seeded showdown checks did not exercise all outcomes");
 Console.WriteLine("PASS: 1,000 seeded hands; staged reveals, hidden opponent, nine unique cards, all showdown outcomes and fresh-hand reset.");
+
+const Seat player = Seat.Player;
+const Seat opponentSeat = Seat.Opponent;
+var betting = new BettingHand(200, 200, player, new Random(1));
+Check(betting.Pot == 3 && betting.Actor == player && betting.Legal == new LegalActions(1, 4, 200),
+    "Incorrect heads-up blinds or first action");
+try { betting.Act(opponentSeat, PokerAction.Check); throw new Exception("Allowed out-of-turn action"); }
+catch (InvalidOperationException) { }
+try { betting.Act(player, PokerAction.Wager, 3); throw new Exception("Allowed undersized raise"); }
+catch (InvalidOperationException) { }
+Check(betting.Pot == 3 && betting.Actor == player, "Invalid action mutated the hand");
+betting.Act(player, PokerAction.Call);
+Check(betting.Stage == HandStage.PreFlop && betting.Actor == opponentSeat && betting.Legal.Call == 0,
+    "Big blind lost the option after a limp");
+betting.Act(opponentSeat, PokerAction.Check);
+Check(betting.Stage == HandStage.Flop && betting.Actor == opponentSeat && betting.Legal.MinWagerTo == 2,
+    "Wrong flop order or opening bet");
+betting.Act(opponentSeat, PokerAction.Wager, 6);
+Check(betting.Legal == new LegalActions(6, 12, 198), "Wrong minimum after an opening bet");
+betting.Act(player, PokerAction.Wager, 16);
+Check(betting.Legal.MinWagerTo == 26, "Minimum raise did not track the last full increment");
+betting.Act(opponentSeat, PokerAction.Fold);
+Check(betting.Outcome == ShowdownOutcome.PlayerWins && betting.Folded == opponentSeat &&
+    betting.AwardedPot == 16 && betting.ReturnedChips == 10 && betting.ReturnedTo == player &&
+    betting.Stack(player) == 208 && betting.Stack(opponentSeat) == 192 &&
+    betting.RevealedOpponentCards.Count == 0, "Fold payout or uncalled return was wrong");
+try { betting.Act(player, PokerAction.Check); throw new Exception("Allowed action after payout"); }
+catch (InvalidOperationException) { }
+
+var shortRaise = new BettingHand(3, 200, player, new Random(2));
+Check(shortRaise.Legal == new LegalActions(1, 3, 3), "Only the short all-in should be legal");
+shortRaise.Act(player, PokerAction.Wager, 3);
+Check(shortRaise.Actor == opponentSeat && shortRaise.Legal == new LegalActions(1, 0, 0),
+    "Short all-in must offer call or fold without a raise");
+shortRaise.Act(opponentSeat, PokerAction.Call);
+Check(shortRaise.Board.Count == 5 && shortRaise.Outcome != null && shortRaise.AwardedPot == 6,
+    "Called short all-in did not run the full board");
+
+var shortCall = new BettingHand(200, 7, player, new Random(3));
+shortCall.Act(player, PokerAction.Wager, 200);
+Check(shortCall.Legal == new LegalActions(5, 0, 0), "Short call did not cap at the stack");
+shortCall.Act(opponentSeat, PokerAction.Call);
+Check(shortCall.AwardedPot == 14 && shortCall.ReturnedChips == 193 && shortCall.ReturnedTo == player &&
+    shortCall.Stack(player) + shortCall.Stack(opponentSeat) == 207, "Unequal all-in settlement was wrong");
+
+var shortBlind = new BettingHand(200, 1, player, new Random(4));
+Check(shortBlind.Actor == null && shortBlind.Board.Count == 5 && shortBlind.AwardedPot == 2,
+    "Matched all-in blind should run out immediately");
+var forcedDecision = new BettingHand(1, 200, player, new Random(5));
+Check(forcedDecision.Actor == null && forcedDecision.AwardedPot == 2 && forcedDecision.ReturnedChips == 1,
+    "Excess big blind should be returned against an all-in small blind");
+
+var tiedCheckdown = false;
+for (var seed = 0; seed < 100 && !tiedCheckdown; seed++)
+{
+    var hand = new BettingHand(100, 150, opponentSeat, new Random(seed));
+    while (hand.Actor is { } actor)
+        hand.Act(actor, hand.Legal.Call > 0 ? PokerAction.Call : PokerAction.Check);
+    if (hand.Outcome != ShowdownOutcome.Tie) continue;
+    Check(hand.AwardedPot == 4 && hand.Stack(player) == 100 && hand.Stack(opponentSeat) == 150,
+        "A tied checkdown did not award half the pot to each seat");
+    tiedCheckdown = true;
+}
+Check(tiedCheckdown, "Split payout check did not reach a tie");
+
+var sawSplit = false;
+var sawRefill = false;
+for (var seed = 0; seed < 50; seed++)
+{
+    var moves = new Random(seed);
+    var session = new FreePlaySession(new Random(seed), new Random(seed + 1000));
+    var expectedChips = 400;
+    for (var number = 1; number <= 20; number++)
+    {
+        var hand = session.Hand;
+        Check(session.HandNumber == number && hand.Dealer == (number % 2 == 1 ? player : opponentSeat),
+            "Dealer did not alternate");
+        for (var turn = 0; ; turn++)
+        {
+            Check(hand.Stack(player) >= 0 && hand.Stack(opponentSeat) >= 0 &&
+                hand.Stack(player) + hand.Stack(opponentSeat) + hand.Pot == expectedChips,
+                "Chip conservation failed");
+            if (hand.Outcome != null) break;
+            Check(turn < 100 && hand.Actor == player && hand.RevealedOpponentCards.Count == 0,
+                "Bot did not yield a valid, private player turn");
+            var legal = hand.Legal;
+            var roll = moves.Next(10);
+            if (legal.CanWager && roll >= 7)
+                session.Act(PokerAction.Wager, roll == 9 ? legal.MaxWagerTo : legal.MinWagerTo);
+            else if (legal.Call > 0 && roll == 0)
+                session.Act(PokerAction.Fold);
+            else
+                session.Act(legal.Call == 0 ? PokerAction.Check : PokerAction.Call);
+        }
+        Check(hand.Pot == 0 && hand.AwardedPot > 0 && hand.Actor == null, "Hand did not close");
+        if (hand.Folded != null)
+            Check(hand.RevealedOpponentCards.Count == 0, "Fold exposed opponent cards");
+        else
+            Check(hand.Board.Count == 5 && hand.RevealedOpponentCards.Count == 2, "Incomplete showdown");
+        if (hand.Outcome == ShowdownOutcome.Tie)
+        {
+            sawSplit = true;
+            Check(hand.AwardedPot % 2 == 0 && hand.BestHand!.CompareTo(hand.OpponentBestHand) == 0,
+                "Invalid split pot");
+        }
+        var refilled = hand.Stack(player) == 0 || hand.Stack(opponentSeat) == 0;
+        if (refilled) expectedChips += FreePlaySession.BuyIn;
+        session.NextHand();
+        sawRefill |= refilled;
+        Check((session.RefillNotice.Length > 0) == refilled, "Refill notice did not match busted stacks");
+    }
+}
+Check(sawSplit && sawRefill, "Session checks did not reach splits and refills");
+Console.WriteLine("PASS: heads-up blind order, minimum raises, folds, short blinds, unequal all-ins, and 1,000 Free Play hands with splits, refills and chip conservation.");

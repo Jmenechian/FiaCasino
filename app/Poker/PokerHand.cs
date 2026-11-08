@@ -15,6 +15,7 @@ public sealed class PokerHand
     private readonly Deck _deck;
     private readonly List<Card> _board = new(5);
     private readonly IReadOnlyList<Card> _opponentCards;
+    internal IReadOnlyList<Card> OpponentHoleCards => _opponentCards;
     public IReadOnlyList<Card> Board { get; }
     public IReadOnlyList<Card> HoleCards { get; }
     public HandStage Stage { get; private set; } = HandStage.PreFlop;
@@ -27,14 +28,15 @@ public sealed class PokerHand
     public HandValue? BestHand => _board.Count < 3 ? null :
         HandEvaluator.Evaluate(_board.Concat(HoleCards).ToArray());
 
-    public PokerHand(Random? random = null)
+    public PokerHand(Random? random = null, bool dealOpponentFirst = false)
     {
         _deck = new Deck(random);
         Board = _board.AsReadOnly();
-        var firstPlayerCard = _deck.Draw();
-        var firstOpponentCard = _deck.Draw();
-        HoleCards = Array.AsReadOnly(new[] { firstPlayerCard, _deck.Draw() });
-        _opponentCards = Array.AsReadOnly(new[] { firstOpponentCard, _deck.Draw() });
+        var deal = new[] { _deck.Draw(), _deck.Draw(), _deck.Draw(), _deck.Draw() };
+        var playerIndex = dealOpponentFirst ? 1 : 0;
+        var opponentIndex = 1 - playerIndex;
+        HoleCards = Array.AsReadOnly(new[] { deal[playerIndex], deal[playerIndex + 2] });
+        _opponentCards = Array.AsReadOnly(new[] { deal[opponentIndex], deal[opponentIndex + 2] });
     }
 
     public void Advance()

@@ -54,3 +54,20 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - Status: implemented, technically verified, and user-accepted on 2026-11-08.
 - Validation: C# build succeeded (NuGet vulnerability-feed warning). DeckChecks and PokerChecks passed, including the exhaustive evaluator census and 1,000 seeded hands covering unique cards, concealed opponent state and all three outcomes. A headless Godot probe passed 100 hands covering reveal, navigation, inspector and restart. Rendered pre-flop through showdown inspected at 960×600, plus pre-flop at 1120×700 with the inspector hidden. Windows x64 export and exported startup smoke check exited 0. Full interaction checks ran against the development scene.
 - Next proposed milestone: two-seat betting and turn order. Confirm the betting format and scope before implementation.
+
+## Milestone 6 — Heads-up no-limit betting
+
+- Authorized on 2026-11-08 with no-limit betting.
+- Implemented: chip stacks, rotating dealer and 1/2 blinds, pre-flop and post-flop action order, legal actions, street wager totals, minimum full raises and short all-in raises. The board advances as betting rounds close.
+- Review: pending alongside Milestones 7 and 8.
+
+## Milestone 7 — Hand settlement
+
+- Implemented: fold payouts, all-in calls and board runouts, uncalled chip returns, best-five showdown and split pots. The opponent’s cards stay hidden when either seat folds.
+- Review: pending alongside Milestones 6 and 8.
+
+## Milestone 8 — Free Play
+
+- Implemented: a simple opponent that acts on its own cards and public information, repeated hands with 200-chip starting stacks, automatic refills for busted seats between hands, and session restart after a hand.
+- Validation for Milestones 6–8: C# build succeeded with a NuGet vulnerability-feed warning. Deck and poker checks passed, including 1,000 seeded Free Play hands. Headless and rendered Godot probes passed for typed wagers, folds, automatic board progression and showdown, navigation, alternating dealer and restart. Inspected pre-flop, flop and showdown at 960×600. The Windows export and exported startup check passed. Interaction checks ran against the development scene.
+- Review: pending. Run the Windows build and play a few hands. Try a typed raise, a fold, an all-in and Next hand. Check that stacks and payouts make sense, then try Restart Free Play.
