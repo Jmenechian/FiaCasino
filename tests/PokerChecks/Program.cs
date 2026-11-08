@@ -109,14 +109,20 @@ Check(royal == 4, "Expected four royal flushes");
 Console.WriteLine("PASS: all 2,598,960 five-card hands; categories, royal flushes, kickers, ties, wheel, seven-card best-five selection and input checks.");
 
 // Staged hands retain a single deck and evaluate only the cards revealed so far.
+var outcomes = new HashSet<ShowdownOutcome>();
 for (var seed = 0; seed < 1000; seed++)
 {
     var hand = new PokerHand(new Random(seed));
     var expectedDeck = new Deck(new Random(seed));
-    var hole = new[] { expectedDeck.Draw(), expectedDeck.Draw() };
+    var firstPlayer = expectedDeck.Draw();
+    var firstOpponent = expectedDeck.Draw();
+    var hole = new[] { firstPlayer, expectedDeck.Draw() };
+    var opponent = new[] { firstOpponent, expectedDeck.Draw() };
     Check(hand.Stage == HandStage.PreFlop && hand.Board.Count == 0 && hand.CanAdvance,
         "Wrong initial stage");
     Check(hand.HoleCards.SequenceEqual(hole) && hand.BestHand == null, "Pre-flop leaked evaluation");
+    try { hand.Showdown(); throw new Exception("Allowed early showdown"); }
+    catch (InvalidOperationException) { }
     var expectedBoard = new List<Card>();
     HandValue? previous = null;
     foreach (var (stage, count) in new[] { (HandStage.Flop, 3), (HandStage.Turn, 4), (HandStage.River, 5) })
@@ -136,13 +142,33 @@ for (var seed = 0; seed < 1000; seed++)
         if (previous != null) Check(value.CompareTo(previous) >= 0, "Hand weakened on reveal");
         previous = value;
         Check(hand.CanAdvance == (stage != HandStage.River), "Incorrect advance availability");
+        Check(hand.CanShowdown == (stage == HandStage.River) && hand.Outcome == null &&
+            hand.OpponentBestHand == null && hand.RevealedOpponentCards.Count == 0,
+            "Opponent information leaked before showdown");
     }
     var river = hand.Board.ToArray();
     try { hand.Advance(); throw new Exception("Advanced beyond river"); }
     catch (InvalidOperationException) { }
     Check(hand.Stage == HandStage.River && hand.Board.SequenceEqual(river), "Invalid advance changed state");
+    hand.Showdown();
+    Check(hand.RevealedOpponentCards.SequenceEqual(opponent) &&
+        river.Concat(hole).Concat(opponent).Distinct().Count() == 9, "Wrong opponent deal");
+    var opponentValue = HandEvaluator.Evaluate(river.Concat(opponent).ToArray());
+    var expectedOutcome = HandEvaluator.Evaluate(river.Concat(hole).ToArray()).CompareTo(opponentValue) switch
+    {
+        > 0 => ShowdownOutcome.PlayerWins,
+        < 0 => ShowdownOutcome.OpponentWins,
+        _ => ShowdownOutcome.Tie
+    };
+    Check(hand.OpponentBestHand!.CompareTo(opponentValue) == 0 && hand.Outcome == expectedOutcome &&
+        !hand.CanShowdown && hand.Board.SequenceEqual(river), "Wrong showdown result");
+    outcomes.Add(expectedOutcome);
+    try { hand.Showdown(); throw new Exception("Allowed repeat showdown"); }
+    catch (InvalidOperationException) { }
     var fresh = new PokerHand(new Random(seed));
-    Check(fresh.Stage == HandStage.PreFlop && fresh.Board.Count == 0 && fresh.BestHand == null,
+    Check(fresh.Stage == HandStage.PreFlop && fresh.Board.Count == 0 && fresh.BestHand == null &&
+        fresh.Outcome == null && fresh.RevealedOpponentCards.Count == 0,
         "Fresh hand retained stage/evaluation");
 }
-Console.WriteLine("PASS: 1,000 seeded staged hands; 0/3/4/5 board, stable hole/prefix, deck order, visible-only evaluation, river guard and fresh-hand reset.");
+Check(outcomes.Count == 3, "Seeded showdown checks did not exercise all outcomes");
+Console.WriteLine("PASS: 1,000 seeded hands; staged reveals, hidden opponent, nine unique cards, all showdown outcomes and fresh-hand reset.");

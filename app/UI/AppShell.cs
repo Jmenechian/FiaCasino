@@ -24,7 +24,8 @@ public partial class AppShell : Control
 
     private void Advance()
     {
-        _pokerHand!.Advance();
+        if (_pokerHand!.CanShowdown) _pokerHand.Showdown();
+        else _pokerHand.Advance();
         ShowTable();
     }
 
@@ -97,9 +98,9 @@ public partial class AppShell : Control
             HandStage.PreFlop => "Reveal flop",
             HandStage.Flop => "Reveal turn",
             HandStage.Turn => "Reveal river",
-            _ => "River revealed"
+            _ => _pokerHand.CanShowdown ? "Showdown" : "Showdown complete"
         }, Advance, 180);
-        advance.Disabled = !_pokerHand.CanAdvance;
+        advance.Disabled = !_pokerHand.CanAdvance && !_pokerHand.CanShowdown;
         header.AddChild(advance);
         var deal = ActionButton("Deal", Deal, 100);
         header.AddChild(deal);
@@ -124,18 +125,38 @@ public partial class AppShell : Control
         layout.AddChild(Text($"THE BOARD  /  {stage}", 14, "b0c8b5", true));
         layout.AddChild(CardRow(_pokerHand.Board, "Board", 5));
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 14) });
-        layout.AddChild(Text("YOUR CARDS", 14, "b0c8b5", true));
-        layout.AddChild(CardRow(_pokerHand.HoleCards, "Your hand"));
+        var seats = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        seats.AddThemeConstantOverride("separation", 56);
+        layout.AddChild(seats);
+        var player = new VBoxContainer();
+        seats.AddChild(player);
+        player.AddChild(Text("YOUR CARDS", 14, "b0c8b5", true));
+        player.AddChild(CardRow(_pokerHand.HoleCards, "Your hand"));
+        var opponent = new VBoxContainer();
+        seats.AddChild(opponent);
+        opponent.AddChild(Text("OPPONENT", 14, "b0c8b5", true));
+        opponent.AddChild(CardRow(_pokerHand.RevealedOpponentCards, "Opponent", 2, faceDown: true));
 
         _readout = Text("CARD INSPECTOR  /  Click any card to see its identity.", 17, "d4c69f", true);
         _readout.Visible = _showReadout;
         page.AddChild(_readout);
         var bestHand = _pokerHand.BestHand;
-        page.AddChild(Text($"BEST HAND  /  {bestHand?.Label ?? "Available from the flop"}", 17, "d4c69f", true));
-        if (_pokerHand.CanAdvance) advance.GrabFocus(); else deal.GrabFocus();
+        var summary = $"BEST HAND  /  {bestHand?.Label ?? "Available from the flop"}";
+        if (_pokerHand.Outcome is { } outcome)
+        {
+            var result = outcome switch
+            {
+                ShowdownOutcome.PlayerWins => "You win",
+                ShowdownOutcome.OpponentWins => "Opponent wins",
+                _ => "Tie"
+            };
+            summary += $"     OPPONENT  /  {_pokerHand.OpponentBestHand!.Label}     RESULT  /  {result}";
+        }
+        page.AddChild(Text(summary, 17, "d4c69f", true));
+        if (advance.Disabled) deal.GrabFocus(); else advance.GrabFocus();
     }
 
-    private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, int slots = 0)
+    private HBoxContainer CardRow(IReadOnlyList<Card> cards, string location, int slots = 0, bool faceDown = false)
     {
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 16);
@@ -155,11 +176,19 @@ public partial class AppShell : Control
                 MouseFilter = MouseFilterEnum.Ignore };
             empty.AddThemeStyleboxOverride("panel", new StyleBoxFlat
             {
-                BgColor = new Color("174b3c"), BorderColor = new Color("547560"),
+                BgColor = new Color(faceDown ? "1c352d" : "174b3c"),
+                BorderColor = new Color(faceDown ? "cdb781" : "547560"),
                 BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
                 CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9,
                 CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9
             });
+            if (faceDown)
+            {
+                var marker = Text("◆", 32, "cdb781", true);
+                marker.VerticalAlignment = VerticalAlignment.Center;
+                empty.AddChild(marker);
+                marker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            }
             row.AddChild(empty);
         }
         return row;

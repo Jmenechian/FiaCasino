@@ -40,10 +40,17 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - Broader direction: enjoyable offline Hold'em first, one opponent initially, fair bots, Free Play with refills and later tournaments without refills. Mobile deferred; appearance choices optional. Detailed future planning stays in local notes.
 
 ## Milestone 4 — Staged board reveal
-- Status: implemented and technically verified on 2026-11-01; awaiting user review. Authorized on 2026-11-01.
+- Status: implemented and technically verified on 2026-11-01. User-accepted on 2026-11-08.
 - Scope: two private cards, empty board, manual flop (three), turn (one), river (one). Retain current hand/stage through Settings and lobby navigation; Deal starts a fresh hand at any stage.
 - Implemented: plain C# PokerHand owns one shuffled deck, private cards, revealed board and stage. Fixed empty board positions retain the existing table layout; the reveal button names the next stage and disables after river. Focus follows reveal until river, then Deal. Inspector reads only visible cards and resets on reveal/Deal. BEST HAND uses visible cards only, from the flop onward.
 - Excluded: opponents, showdown, betting, bots, odds, burn-card simulation, animations and artwork customization.
 - Validation: app build passed with zero warnings/errors. PokerChecks passed exhaustive five-card census and existing comparison checks plus 1,000 seeded staged hands covering counts, unchanged private/prefix cards, draw order, visible-only evaluation, fresh-hand reset and rejection beyond river. Existing 1,000 deck checks passed. Running Godot probe passed 100 full hands, independently checked labels at flop/turn/river, all 52 textures, inspector/reset/visibility, navigation at each stage, restart at each stage, focus and disabled river control. Rendered all stages inspected at 960x600 and pre-flop at 1120x700 with inspector shown/hidden; no clipping seen. Godot import and Windows export exited 0; exported headless startup exited 0. Final import/scene/export/startup logs contain no errors or warnings. Full scripted interactions ran against development; release validation covers startup.
-- User review: pending. Review the Windows build using the short checklist supplied at delivery; acceptance is separate from technical validation.
-- Next action: user manual review and feedback; fix issues or record acceptance. Milestone 5 remains pending acceptance and authorization.
+- User review: accepted. The user reported “looks great, we good” and authorized the next milestone.
+
+## Milestone 5 — Opponent and showdown
+
+- Authorized on 2026-11-08.
+- Scope: deal two private cards to each seat from the same shuffled deck, keep the opponent’s cards face down through the river, and reveal and compare both best-five hands on Showdown. Preserve Deal, navigation and the card inspector. Betting and bot decisions remain future work.
+- Status: implemented and technically verified. Awaiting user review.
+- Validation: C# build succeeded (NuGet vulnerability-feed warning). DeckChecks and PokerChecks passed, including the exhaustive evaluator census and 1,000 seeded hands covering unique cards, concealed opponent state and all three outcomes. A headless Godot probe passed 100 hands covering reveal, navigation, inspector and restart. Rendered pre-flop through showdown inspected at 960×600, plus pre-flop at 1120×700 with the inspector hidden. Windows x64 export and exported startup smoke check exited 0. Full interaction checks ran against the development scene.
+- Next action: review the Windows build. Verify opponent cards stay face down through the river, Showdown reveals both cards and the result, and Deal resets the hand. Fix reported issues or record acceptance before scoping betting.
