@@ -6,7 +6,7 @@ Built with Godot 4.7.2 .NET and C#, targeting Windows x64. Linux has not been te
 
 ## Current status
 
-Milestones 1–5 are accepted. Milestones 6–8 add heads-up no-limit Hold’em, hand settlement, and a Free Play bot.
+Milestones 1–8 are accepted, including heads-up no-limit Hold’em, hand settlement, and a Free Play bot.
 
 Choose **Poker** to start Free Play. Both seats begin with 200 chips and post 1/2 blinds. The dealer marker alternates each hand. The table shows the pot, stacks, current street contributions, and the bot’s latest actions.
 
