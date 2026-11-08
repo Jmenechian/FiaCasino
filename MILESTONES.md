@@ -51,6 +51,6 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 
 - Authorized on 2026-11-08.
 - Scope: deal two private cards to each seat from the same shuffled deck, keep the opponent’s cards face down through the river, and reveal and compare both best-five hands on Showdown. Preserve Deal, navigation and the card inspector. Betting and bot decisions remain future work.
-- Status: implemented and technically verified. Awaiting user review.
+- Status: implemented, technically verified, and user-accepted on 2026-11-08.
 - Validation: C# build succeeded (NuGet vulnerability-feed warning). DeckChecks and PokerChecks passed, including the exhaustive evaluator census and 1,000 seeded hands covering unique cards, concealed opponent state and all three outcomes. A headless Godot probe passed 100 hands covering reveal, navigation, inspector and restart. Rendered pre-flop through showdown inspected at 960×600, plus pre-flop at 1120×700 with the inspector hidden. Windows x64 export and exported startup smoke check exited 0. Full interaction checks ran against the development scene.
-- Next action: review the Windows build. Verify opponent cards stay face down through the river, Showdown reveals both cards and the result, and Deal resets the hand. Fix reported issues or record acceptance before scoping betting.
+- Next proposed milestone: two-seat betting and turn order. Confirm the betting format and scope before implementation.
