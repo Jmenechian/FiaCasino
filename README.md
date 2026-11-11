@@ -10,7 +10,9 @@ Milestones 1–8 are accepted, including heads-up no-limit Hold’em, hand settl
 
 Choose **Poker** to start Free Play. Both seats begin with 200 chips and post 1/2 blinds. The dealer marker alternates each hand. The table shows the pot, stacks, current street contributions, and the bot’s latest actions.
 
-Choose from the actions offered on your turn. **Bet to** and **Raise to** use the total chips you want committed on the current street. Betting advances the board automatically. A fold ends the hand with the opponent’s cards still hidden. Once a called all-in closes the action, the remaining board runs out and the pot is paid at showdown. Equal hands split the pot.
+The active seat is highlighted. The opponent takes a short thinking turn, with player betting controls hidden until your turn. Chip animations show blinds, wagers, uncalled returns and payouts; the numbers update immediately. Leaving the table pauses pending opponent decisions.
+
+Choose from the actions offered on your turn. **Bet to** and **Raise to** use the total chips you want committed on the current street. **Min**, **½ pot**, and **Pot** set the wager input without submitting it. Pot sizes include the call first, then add the selected fraction of that pot; totals are clamped to legal minimums and your stack. Betting advances the board automatically. A fold ends the hand with the opponent’s cards still hidden. Once a called all-in closes the action, the remaining board runs out and the pot is paid at showdown. Equal hands split the pot.
 
 **Next hand** keeps both stacks and refills a busted seat to 200 chips. **Restart Free Play** resets the session between hands. Your session survives Settings and lobby navigation until the app closes.
 

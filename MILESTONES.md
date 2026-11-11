@@ -77,3 +77,11 @@ Keep this file concise: agreed scope, implementation status, validation, and use
 - The user selected the Classic lounge mockup on 2026-11-08. The refreshed poker table uses green felt, a brass-edged rail, opposing seats, a central pot display and a bottom action panel.
 - Status: implemented. Awaiting manual review of the Windows build.
 - Validation: C# build, headless and rendered Godot interaction checks, Windows export, and exported startup smoke check passed. Inspected the rendered table at 960×600 and 1120×700. The build reported a NuGet vulnerability-feed warning.
+
+## Poker motion and betting comfort
+
+- Authorized on 2026-11-11: continue poker development with a more polished UI and moving chips. This does not retroactively record acceptance of the preceding table refresh.
+- Implemented: Classic lounge refinement with active-seat badges, original drawn chips, animated blind/wager/refund/payout transfers, individually paced bot turns, and minimum/half-pot/pot wager presets. Betting controls are unavailable during the bot turn; leaving the table pauses pending bot actions.
+- Logic: optional stepped opponent execution preserves instant-session behavior; a per-hand transfer ledger records exact chip movements, including split awards and uncalled returns. Existing heads-up rules and bot strategy remain unchanged.
+- Validation: C# build and exhaustive PokerChecks passed, including 500 paced-versus-instant hands and refund/payout ledger checks. Headless and rendered interaction probes passed. Rendered pre-flop and showdown inspected at 960×600; motion and opponent turn at 1120×700. Windows export and startup verification recorded in local working notes. Build reports NU1900 because the vulnerability feed is unreachable.
+- Review: awaiting user visual and interaction review. All-in board reveals remain immediate; chips are visual feedback on already-applied rules, and navigation or another action can skip an unfinished animation.

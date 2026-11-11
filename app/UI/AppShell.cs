@@ -10,7 +10,7 @@ namespace FiaCasino.UI;
 public partial class AppShell : Control
 {
     private static readonly Vector2 BoardCardSize = new(92, 128);
-    private static readonly Vector2 OpponentCardSize = new(74, 104);
+    private static readonly Vector2 OpponentCardSize = new(64, 88);
     private Control _page = null!;
     private TextureRect _loungeBackground = null!;
     private Theme _loungeTheme = null!;
@@ -21,16 +21,76 @@ public partial class AppShell : Control
     private string _settingsReturn = "lobby";
 
     private FreePlaySession? _session;
+    private BettingHand? _animatedHand;
+    private int _transferCursor;
+    private double _opponentDelay;
+    private Control? _playerSeat;
+    private Control? _opponentSeat;
+    private Control? _potBadge;
+    private Control? _motionLayer;
+    private ChipTransfer[] _pendingTransfers = Array.Empty<ChipTransfer>();
+
+    public override void _Process(double delta)
+    {
+        if (_screen != "table" || _session == null) return;
+        if (_pendingTransfers.Length > 0)
+        {
+            AnimateTransfers(_pendingTransfers);
+            _pendingTransfers = Array.Empty<ChipTransfer>();
+        }
+        if (_session.Hand.Actor != Seat.Opponent) return;
+        _opponentDelay -= delta;
+        if (_opponentDelay > 0) return;
+        _session.AdvanceOpponent();
+        ShowTable();
+    }
+
+    private void AnimateTransfers(ChipTransfer[] transfers)
+    {
+        if (_motionLayer == null || _potBadge == null) return;
+        for (var i = 0; i < transfers.Length; i++)
+        {
+            var transfer = transfers[i];
+            var seat = transfer.Seat == Seat.Player ? _playerSeat! : _opponentSeat!;
+            var seatPoint = seat.GlobalPosition + new Vector2(-54, seat.Size.Y / 2);
+            var potPoint = _potBadge.GlobalPosition + new Vector2(_potBadge.Size.X + 30, 16);
+            var from = (transfer.ToPot ? seatPoint : potPoint) - _motionLayer.GlobalPosition;
+            var to = (transfer.ToPot ? potPoint : seatPoint) - _motionLayer.GlobalPosition;
+            var token = new VBoxContainer { Position = from, Modulate = Colors.Transparent };
+            token.AddChild(new ChipStack());
+            token.AddChild(Text(transfer.Amount.ToString(), 15, "ffe3a9", true));
+            _motionLayer.AddChild(token);
+            var tween = token.CreateTween();
+            tween.TweenInterval(i * 0.4);
+            tween.TweenProperty(token, "modulate", Colors.White, 0.06);
+            tween.TweenProperty(token, "position", to, 0.36).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
+            tween.TweenProperty(token, "modulate", Colors.Transparent, 0.15);
+            tween.TweenCallback(Callable.From(token.QueueFree));
+        }
+    }
+
+    private Control SeatBadge(BettingHand hand, Seat seat, string name)
+    {
+        var badge = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        var active = hand.Actor == seat;
+        badge.AddThemeStyleboxOverride("panel", LoungeFrame("102c23", active ? "e6c087" : "56725b", active ? 2 : 1, 12, 7));
+        var row = new HBoxContainer();
+        badge.AddChild(row);
+        row.AddChild(new ChipStack());
+        row.AddChild(Text(SeatLabel(hand, seat, name) + (active ? "  •" : ""), 15, "efe1c7", true));
+        return badge;
+    }
 
     private void RestartFreePlay()
     {
-        _session = new FreePlaySession();
+        _session = new FreePlaySession(automaticOpponent: false);
         ShowTable();
     }
 
     private void Act(PokerAction action, int wagerTo = 0)
     {
-        _session!.Act(action, wagerTo);
+        if (_session?.Hand.Actor != Seat.Player) return;
+        _session.Act(action, wagerTo);
         ShowTable();
     }
 
@@ -77,7 +137,7 @@ public partial class AppShell : Control
         AddChild(margin);
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (var side in new[] { "left", "right", "top", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + side, 36);
+            margin.AddThemeConstantOverride("margin_" + side, screen == "table" ? 24 : 36);
         var column = new VBoxContainer();
         column.AddThemeConstantOverride("separation", 20);
         margin.AddChild(column);
@@ -109,6 +169,14 @@ public partial class AppShell : Control
         if (_session == null) { RestartFreePlay(); return; }
         var hand = _session.Hand;
         var page = NewPage("table");
+        if (_animatedHand != hand) { _animatedHand = hand; _transferCursor = 0; }
+        _pendingTransfers = hand.Transfers.Skip(_transferCursor).ToArray();
+        _transferCursor = hand.Transfers.Count;
+        _opponentDelay = 0.85 + _pendingTransfers.Length * 0.4;
+        _motionLayer = new Control { MouseFilter = MouseFilterEnum.Ignore };
+        _page.AddChild(_motionLayer);
+        _motionLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _motionLayer.ZIndex = 10;
         page.Theme = _loungeTheme;
         page.AddThemeConstantOverride("separation", 12);
         var header = new HBoxContainer();
@@ -139,8 +207,13 @@ public partial class AppShell : Control
         layout.AddThemeConstantOverride("separation", 5);
         felt.AddChild(layout);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        layout.AddChild(Text(SeatLabel(hand, Seat.Opponent, "OPPONENT"), 15, "efe1c7", true));
-        layout.AddChild(CardRow(hand.RevealedOpponentCards, "Opponent", OpponentCardSize, 2, faceDown: true));
+        _opponentSeat = SeatBadge(hand, Seat.Opponent, "OPPONENT");
+        var opponentRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        opponentRow.AddThemeConstantOverride("separation", 18);
+        _opponentSeat.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        opponentRow.AddChild(_opponentSeat);
+        opponentRow.AddChild(CardRow(hand.RevealedOpponentCards, "Opponent", OpponentCardSize, 2, faceDown: true));
+        layout.AddChild(opponentRow);
 
         var stage = hand.Stage == HandStage.PreFlop ? "PRE-FLOP" : hand.Stage.ToString().ToUpperInvariant();
         var potLabel = hand.Outcome == null ? "POT" : "POT PAID";
@@ -150,19 +223,26 @@ public partial class AppShell : Control
         potStyle.ContentMarginLeft = 14;
         potStyle.ContentMarginRight = 14;
         potBadge.AddThemeStyleboxOverride("panel", potStyle);
+        _potBadge = potBadge;
         layout.AddChild(potBadge);
         var potRow = new HBoxContainer();
         potRow.AddThemeConstantOverride("separation", 12);
         potBadge.AddChild(potRow);
+        potRow.AddChild(new ChipStack());
         potRow.AddChild(Text($"{stage}  /  {potLabel}", 14, "d0b999"));
         potRow.AddChild(Text($"{pot}", 23, "ffe3a9"));
         layout.AddChild(CardRow(hand.Board, "Board", BoardCardSize, 5));
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
-        layout.AddChild(CardRow(hand.HoleCards, "Your hand", BoardCardSize));
-        layout.AddChild(Text(SeatLabel(hand, Seat.Player, "YOU"), 15, "efe1c7", true));
+        var playerRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        playerRow.AddThemeConstantOverride("separation", 18);
+        _playerSeat = SeatBadge(hand, Seat.Player, "YOU");
+        _playerSeat.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        playerRow.AddChild(_playerSeat);
+        playerRow.AddChild(CardRow(hand.HoleCards, "Your hand", BoardCardSize));
+        layout.AddChild(playerRow);
         layout.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
 
-        var dock = new PanelContainer();
+        var dock = new PanelContainer { CustomMinimumSize = new Vector2(0, 170) };
         dock.AddThemeStyleboxOverride("panel", LoungeFrame("251e18", "614933", 1, 12, 12));
         page.AddChild(dock);
         var footer = new VBoxContainer();
@@ -170,8 +250,8 @@ public partial class AppShell : Control
         _readout = Text("CARD INSPECTOR  /  Click a visible card", 14, "c4af93");
         _readout.Visible = _showReadout;
         footer.AddChild(_readout);
-        var dockRow = new HBoxContainer();
-        dockRow.AddThemeConstantOverride("separation", 16);
+        var dockRow = new VBoxContainer();
+        dockRow.AddThemeConstantOverride("separation", 6);
         footer.AddChild(dockRow);
         var status = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         dockRow.AddChild(status);
@@ -191,7 +271,9 @@ public partial class AppShell : Control
             if (hand.Folded is { } folded) result += folded == Seat.Player ? "  /  You folded" : "  /  Opponent folded";
             if (hand.ReturnedChips > 0)
                 result += $"  /  {hand.ReturnedChips} returned to {(hand.ReturnedTo == Seat.Player ? "you" : "opponent")}";
-            status.AddChild(Text(result, 19, "f4ecda"));
+            var resultLabel = Text(result, 19, "f4ecda");
+            resultLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            status.AddChild(resultLabel);
             var controls = ActionRow(dockRow);
             var next = ActionButton("Next hand", () => { _session.NextHand(); ShowTable(); });
             next.ThemeTypeVariation = "LoungePrimary";
@@ -201,11 +283,12 @@ public partial class AppShell : Control
             return;
         }
 
-        var activity = string.Join("  /  ", new[] { _session.RefillNotice, _session.OpponentActivity, "Your turn" }
+        var activity = string.Join("  /  ", new[] { _session.RefillNotice, _session.OpponentActivity, hand.Actor == Seat.Player ? "Your turn" : "Opponent is thinking…" }
             .Where(message => message.Length > 0));
         var activityLabel = Text(activity, 17, "f4ecda");
         activityLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         status.AddChild(activityLabel);
+        if (hand.Actor != Seat.Player) return;
         var legal = hand.Legal;
         var actions = ActionRow(dockRow);
         if (legal.Call > 0) actions.AddChild(ActionButton("Fold", () => Act(PokerAction.Fold)));
@@ -223,14 +306,30 @@ public partial class AppShell : Control
                 CustomMinimumSize = new Vector2(104, 0),
                 TooltipText = "Total chips to commit on this street"
             };
-            actions.AddChild(amount);
+            var wagerGroup = new VBoxContainer();
+            actions.AddChild(wagerGroup);
+            var presets = new HBoxContainer();
+            presets.AddThemeConstantOverride("separation", 6);
+            wagerGroup.AddChild(presets);
+            foreach (var (caption, fraction) in new[] { ("Min", 0.0), ("½ pot", 0.5), ("Pot", 1.0) })
+            {
+                var preset = ActionButton(caption, () =>
+                {
+                    var target = hand.Committed(Seat.Player) + legal.Call + (long)Math.Round((hand.Pot + (long)legal.Call) * fraction);
+                    amount.Value = Math.Clamp(target, legal.MinWagerTo, legal.MaxWagerTo);
+                });
+                preset.CustomMinimumSize = new Vector2(0, 30);
+                preset.AddThemeFontSizeOverride("font_size", 14);
+                presets.AddChild(preset);
+            }
+            wagerGroup.AddChild(amount);
             actions.AddChild(ActionButton(hand.Committed(Seat.Player) + hand.Committed(Seat.Opponent) == 0
                 ? "Bet to" : "Raise to", () => { amount.Apply(); Act(PokerAction.Wager, (int)amount.Value); }));
             actions.AddChild(ActionButton("All-in", () => Act(PokerAction.Wager, legal.MaxWagerTo)));
         }
     }
 
-    private static HBoxContainer ActionRow(HBoxContainer dock)
+    private static HBoxContainer ActionRow(BoxContainer dock)
     {
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);

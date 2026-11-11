@@ -12,12 +12,16 @@ public readonly record struct LegalActions(int Call, int MinWagerTo, int MaxWage
     public bool CanWager => MaxWagerTo > 0;
 }
 
+public readonly record struct ChipTransfer(Seat Seat, int Amount, bool ToPot);
+
 public sealed class BettingHand
 {
     public const int SmallBlind = 1;
     public const int BigBlind = 2;
 
     private readonly PokerHand _cards;
+    private readonly List<ChipTransfer> _transfers = new();
+    public IReadOnlyList<ChipTransfer> Transfers => _transfers;
     private readonly int[] _stacks;
     private readonly int[] _street = new int[2];
     private int _actionsLeft = 2;
@@ -150,6 +154,7 @@ public sealed class BettingHand
         _stacks[(int)seat] -= amount;
         _street[(int)seat] += amount;
         Pot += amount;
+        if (amount != 0) _transfers.Add(new(seat, Math.Abs(amount), amount > 0));
     }
 
     private void ReturnUncalled()
@@ -168,11 +173,14 @@ public sealed class BettingHand
         AwardedPot = Pot;
         if (outcome == ShowdownOutcome.Tie)
         {
+            _transfers.Add(new(Dealer, Pot / 2, false));
+            _transfers.Add(new(Other(Dealer), Pot - Pot / 2, false));
             _stacks[(int)Dealer] += Pot / 2;
             _stacks[(int)Other(Dealer)] += Pot - Pot / 2;
         }
         else
         {
+            _transfers.Add(new(outcome == ShowdownOutcome.PlayerWins ? Seat.Player : Seat.Opponent, Pot, false));
             _stacks[(int)(outcome == ShowdownOutcome.PlayerWins ? Seat.Player : Seat.Opponent)] += Pot;
         }
         Array.Clear(_street);

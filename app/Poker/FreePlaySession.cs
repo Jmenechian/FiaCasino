@@ -9,13 +9,15 @@ public sealed class FreePlaySession
 
     private readonly Random _deckRandom;
     private readonly Random _botRandom;
+    private readonly bool _automaticOpponent;
     public BettingHand Hand { get; private set; } = null!;
     public int HandNumber { get; private set; }
     public string RefillNotice { get; private set; } = "";
     public string OpponentActivity { get; private set; } = "";
 
-    public FreePlaySession(Random? deckRandom = null, Random? botRandom = null)
+    public FreePlaySession(Random? deckRandom = null, Random? botRandom = null, bool automaticOpponent = true)
     {
+        _automaticOpponent = automaticOpponent;
         _deckRandom = deckRandom ?? new Random();
         _botRandom = botRandom ?? new Random();
         NextHand();
@@ -32,13 +34,29 @@ public sealed class FreePlaySession
         Hand = new BettingHand(player == 0 ? BuyIn : player, opponent == 0 ? BuyIn : opponent,
             dealer, _deckRandom);
         HandNumber++;
-        PlayOpponent();
+        OpponentActivity = "";
+        if (_automaticOpponent) PlayOpponent();
     }
 
     public void Act(PokerAction action, int wagerTo = 0)
     {
         Hand.Act(Seat.Player, action, wagerTo);
-        PlayOpponent();
+        if (_automaticOpponent) PlayOpponent();
+    }
+
+    public void AdvanceOpponent()
+    {
+        if (Hand.Actor != Seat.Opponent) throw new InvalidOperationException("It is not the opponent's turn.");
+        var decision = Hand.OpponentDecision(_botRandom);
+        OpponentActivity = "Opponent " + (decision.Action switch
+        {
+            PokerAction.Fold => "folds",
+            PokerAction.Check => "checks",
+            PokerAction.Call => $"calls {Hand.Legal.Call}",
+            _ => Hand.Committed(Seat.Player) + Hand.Committed(Seat.Opponent) == 0
+                ? $"bets {decision.WagerTo}" : $"raises to {decision.WagerTo}"
+        });
+        Hand.Act(Seat.Opponent, decision.Action, decision.WagerTo);
     }
 
     private void PlayOpponent()
@@ -46,17 +64,9 @@ public sealed class FreePlaySession
         var actions = new List<string>();
         while (Hand.Actor == Seat.Opponent)
         {
-            var decision = Hand.OpponentDecision(_botRandom);
-            actions.Add(decision.Action switch
-            {
-                PokerAction.Fold => "folds",
-                PokerAction.Check => "checks",
-                PokerAction.Call => $"calls {Hand.Legal.Call}",
-                _ => Hand.Committed(Seat.Player) + Hand.Committed(Seat.Opponent) == 0
-                    ? $"bets {decision.WagerTo}" : $"raises to {decision.WagerTo}"
-            });
-            Hand.Act(Seat.Opponent, decision.Action, decision.WagerTo);
+            AdvanceOpponent();
+            actions.Add(OpponentActivity);
         }
-        OpponentActivity = actions.Count == 0 ? "" : "Opponent " + string.Join(", then ", actions);
+        OpponentActivity = string.Join("; ", actions);
     }
 }

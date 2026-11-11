@@ -286,3 +286,48 @@ for (var seed = 0; seed < 50; seed++)
 }
 Check(sawSplit && sawRefill, "Session checks did not reach splits and refills");
 Console.WriteLine("PASS: heads-up blind order, minimum raises, folds, short blinds, unequal all-ins, and 1,000 Free Play hands with splits, refills and chip conservation.");
+// Pacing must preserve exactly the same deals, decisions and settlement as instant play.
+for (var seed = 0; seed < 100; seed++)
+{
+    var instant = new FreePlaySession(new Random(seed), new Random(seed + 800));
+    var paced = new FreePlaySession(new Random(seed), new Random(seed + 800), automaticOpponent: false);
+    for (var number = 0; number < 5; number++)
+    {
+        while (true)
+        {
+            while (paced.Hand.Actor == Seat.Opponent) paced.AdvanceOpponent();
+            var a = instant.Hand;
+            var b = paced.Hand;
+            Check(a.Actor == b.Actor && a.Stage == b.Stage && a.Pot == b.Pot &&
+                a.Stack(player) == b.Stack(player) && a.Stack(opponentSeat) == b.Stack(opponentSeat) &&
+                a.Outcome == b.Outcome && a.Board.SequenceEqual(b.Board), "Pacing changed the game");
+            if (a.Outcome != null) break;
+            var action = a.Legal.Call > 0 ? PokerAction.Call : PokerAction.Check;
+            instant.Act(action);
+            paced.Act(action);
+        }
+        // Every recorded transfer is positive and the pot ledger settles to zero.
+        Check(paced.Hand.Transfers.All(t => t.Amount > 0) &&
+            paced.Hand.Transfers.Sum(t => t.ToPot ? t.Amount : -t.Amount) == 0,
+            "Transfer ledger does not conserve chips");
+        instant.NextHand();
+        paced.NextHand();
+    }
+}
+Console.WriteLine("PASS: 500 paced hands match instant play; chip transfer ledgers settle to zero.");
+
+foreach (var (settled, initialPlayer, initialOpponent) in new[] { (betting, 200, 200), (shortRaise, 3, 200), (shortCall, 200, 7), (shortBlind, 200, 1), (forcedDecision, 1, 200) })
+{
+    Check(settled.Transfers.Sum(t => t.ToPot ? t.Amount : -t.Amount) == 0,
+        "Refund/payout transfer ledger did not balance");
+    foreach (var seat in new[] { player, opponentSeat })
+    {
+        var paid = settled.Transfers.Where(t => t.Seat == seat && t.ToPot).Sum(t => t.Amount);
+        var received = settled.Transfers.Where(t => t.Seat == seat && !t.ToPot).Sum(t => t.Amount);
+        Check((seat == player ? initialPlayer : initialOpponent) - paid + received == settled.Stack(seat),
+            "Transfer ledger disagrees with the final seat stack");
+    }
+}
+Check(shortCall.Transfers.Contains(new ChipTransfer(player, 193, false)),
+    "Uncalled chips are missing from the animation ledger");
+Console.WriteLine("PASS: fold, short blind and unequal all-in transfer ledgers, including the exact refund.");
